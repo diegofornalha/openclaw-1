@@ -36,3 +36,16 @@ Notes
 - Models download to `~/.cache/whisper` on first run.
 - `--model` defaults to `turbo` on this install.
 - Use smaller models for speed, larger for accuracy.
+
+## Script de transcrição
+
+```bash
+{baseDir}/scripts/transcribe.sh /path/to/audio.ogg
+{baseDir}/scripts/transcribe.sh /path/to/audio.ogg --model medium --out /tmp/output.txt
+```
+
+Flags:
+
+- `--model`: Modelo whisper (base, small, medium, large, turbo). Padrão: base
+- `--out`: Arquivo de saída. Padrão: <input>.txt
+- `--language`: Idioma do áudio (pt, en, es, etc.)

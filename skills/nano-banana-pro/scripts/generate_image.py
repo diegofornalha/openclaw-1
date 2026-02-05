@@ -170,7 +170,14 @@ def main():
             full_path = output_path.resolve()
             print(f"\nImage saved: {full_path}")
             # OpenClaw parses MEDIA tokens and will attach the file on supported providers.
-            print(f"MEDIA: {full_path}")
+            # Use relative path with ./ prefix - OpenClaw only accepts ./relative paths or URLs
+            if output_path.is_absolute():
+                # For absolute paths, just print the full path (won't auto-attach, but can be used with message tool)
+                print(f"MEDIA: {full_path}")
+            else:
+                # For relative paths, ensure ./ prefix for OpenClaw auto-attachment
+                relative_path = f"./{output_path}" if not str(output_path).startswith("./") else str(output_path)
+                print(f"MEDIA: {relative_path}")
         else:
             print("Error: No image was generated in the response.", file=sys.stderr)
             sys.exit(1)

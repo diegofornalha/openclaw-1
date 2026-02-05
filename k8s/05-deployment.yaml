@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openclaw-gateway
+  namespace: openclaw
+  labels:
+    app: openclaw
+    component: gateway
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # WhatsApp precisa de instancia unica
+  selector:
+    matchLabels:
+      app: openclaw
+      component: gateway
+  template:
+    metadata:
+      labels:
+        app: openclaw
+        component: gateway
+    spec:
+      hostNetwork: true # Usa rede do host para porta 18789
+      nodeSelector:
+        kubernetes.io/hostname: agentesintegrados
+      securityContext:
+        runAsUser: 1008 # UID do usuario agents no host
+        runAsGroup: 1008
+        fsGroup: 1008
+      containers:
+        - name: gateway
+          image: node:22-bookworm-slim
+          imagePullPolicy: IfNotPresent
+          workingDir: /app/openclaw
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "=== Iniciando OpenClaw Gateway ==="
+
+              if [ ! -d "/app/openclaw/dist" ]; then
+                echo "ERRO: OpenClaw não encontrado em /app/openclaw"
+                exit 1
+              fi
+
+              mkdir -p /tmp/npm-global
+              npm config set prefix /tmp/npm-global
+              npm install -g pnpm --cache /tmp/npm-cache
+              export PATH="/tmp/npm-global/bin:$PATH"
+
+              echo "pnpm version: $(pnpm --version)"
+              echo "Iniciando gateway na porta 18789..."
+              exec node scripts/run-node.mjs gateway run --bind 0.0.0.0 --port 18789 --force
+          ports:
+            - name: gateway
+              containerPort: 18789
+              hostPort: 18789
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: CI
+              value: "true"
+            - name: HOME
+              value: "/tmp"
+            - name: OPENCLAW_STATE_DIR
+              value: "/home/agents/.openclaw"
+            - name: OPENCLAW_CONFIG_PATH
+              value: "/home/agents/.openclaw/openclaw.json"
+            - name: MINIMAX_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-secrets
+                  key: MINIMAX_API_KEY
+            - name: GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-secrets
+                  key: GATEWAY_TOKEN
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: openclaw-code
+              mountPath: /app/openclaw
+            - name: openclaw-config
+              mountPath: /home/agents/.openclaw
+            - name: openclaw-sandbox
+              mountPath: /home/agents/openclaw-sandbox
+      volumes:
+        - name: openclaw-code
+          hostPath:
+            path: /home/agents/openclaw
+            type: Directory
+        - name: openclaw-config
+          hostPath:
+            path: /home/agents/.openclaw
+            type: Directory
+        - name: openclaw-sandbox
+          hostPath:
+            path: /home/agents/openclaw-sandbox
+            type: DirectoryOrCreate
+      restartPolicy: Always
