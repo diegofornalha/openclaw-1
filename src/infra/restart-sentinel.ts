@@ -83,11 +83,19 @@ export async function readRestartSentinel(
     try {
       parsed = JSON.parse(raw) as RestartSentinel | undefined;
     } catch {
-      await fs.unlink(filePath).catch(() => {});
+      await fs
+        .unlink(filePath)
+        .catch((err) =>
+          console.error("restart-sentinel: failed to unlink malformed sentinel file", err),
+        );
       return null;
     }
     if (!parsed || parsed.version !== 1 || !parsed.payload) {
-      await fs.unlink(filePath).catch(() => {});
+      await fs
+        .unlink(filePath)
+        .catch((err) =>
+          console.error("restart-sentinel: failed to unlink invalid sentinel file", err),
+        );
       return null;
     }
     return parsed;
@@ -104,7 +112,11 @@ export async function consumeRestartSentinel(
   if (!parsed) {
     return null;
   }
-  await fs.unlink(filePath).catch(() => {});
+  await fs
+    .unlink(filePath)
+    .catch((err) =>
+      console.error("restart-sentinel: failed to unlink sentinel file after consume", err),
+    );
   return parsed;
 }
 

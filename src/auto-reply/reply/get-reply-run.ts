@@ -25,6 +25,7 @@ import { clearCommandLane, getQueueSize } from "../../process/command-queue.js";
 import { normalizeMainKey } from "../../routing/session-key.js";
 import { isReasoningTagProvider } from "../../utils/provider-utils.js";
 import { hasControlCommand } from "../command-detection.js";
+import { detectContactStatus, getStatusEmoji, getStatusLabel } from "../contact-status.js";
 import { buildInboundMediaNote } from "../media-note.js";
 import {
   type ElevatedLevel,
@@ -300,10 +301,17 @@ export async function runPreparedReply(
     if (channel && to) {
       const modelLabel = `${provider}/${model}`;
       const defaultLabel = `${defaultProvider}/${defaultModel}`;
+
+      // Detecta status do contato
+      const contactStatus = detectContactStatus(sessionKey);
+      const statusEmoji = getStatusEmoji(contactStatus);
+      const statusLabel = getStatusLabel(contactStatus);
+      const statusPart = statusEmoji && statusLabel ? ` · ${statusEmoji} ${statusLabel}` : "";
+
       const text =
         modelLabel === defaultLabel
-          ? `✅ New session started · model: ${modelLabel}`
-          : `✅ New session started · model: ${modelLabel} (default: ${defaultLabel})`;
+          ? `✅ New session started${statusPart} · model: ${modelLabel}`
+          : `✅ New session started${statusPart} · model: ${modelLabel} (default: ${defaultLabel})`;
       await routeReply({
         payload: { text },
         channel,

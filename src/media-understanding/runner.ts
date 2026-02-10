@@ -1058,7 +1058,11 @@ async function runCliEntry(params: {
       model: command,
     };
   } finally {
-    await fs.rm(outputDir, { recursive: true, force: true }).catch(() => {});
+    await fs
+      .rm(outputDir, { recursive: true, force: true })
+      .catch((err) =>
+        console.error("media-understanding: failed to remove CLI temp directory", err),
+      );
   }
 }
 

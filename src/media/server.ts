@@ -44,18 +44,30 @@ export function attachMediaRoutes(
         relativePath: id,
       });
       if (stat.size > MAX_MEDIA_BYTES) {
-        await handle.close().catch(() => {});
+        await handle
+          .close()
+          .catch((err) =>
+            console.error("media server: failed to close file handle after size check", err),
+          );
         res.status(413).send("too large");
         return;
       }
       if (Date.now() - stat.mtimeMs > ttlMs) {
-        await handle.close().catch(() => {});
-        await fs.rm(realPath).catch(() => {});
+        await handle
+          .close()
+          .catch((err) =>
+            console.error("media server: failed to close file handle for expired media", err),
+          );
+        await fs
+          .rm(realPath)
+          .catch((err) => console.error("media server: failed to remove expired media file", err));
         res.status(410).send("expired");
         return;
       }
       const data = await handle.readFile();
-      await handle.close().catch(() => {});
+      await handle
+        .close()
+        .catch((err) => console.error("media server: failed to close file handle after read", err));
       const mime = await detectMime({ buffer: data, filePath: realPath });
       if (mime) {
         res.type(mime);
@@ -64,7 +76,9 @@ export function attachMediaRoutes(
       // best-effort single-use cleanup after response ends
       res.on("finish", () => {
         setTimeout(() => {
-          fs.rm(realPath).catch(() => {});
+          fs.rm(realPath).catch((err) =>
+            console.error("media server: failed to remove media file after response", err),
+          );
         }, 50);
       });
     } catch (err) {
