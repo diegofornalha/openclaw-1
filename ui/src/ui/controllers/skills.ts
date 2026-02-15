@@ -122,6 +122,33 @@ export async function saveSkillApiKey(state: SkillsState, skillKey: string) {
   }
 }
 
+export async function uninstallSkill(state: SkillsState, skillKey: string, name: string) {
+  if (!state.client || !state.connected) {
+    return;
+  }
+  state.skillsBusyKey = skillKey;
+  state.skillsError = null;
+  try {
+    const result = await state.client.request<{ message?: string }>("skills.uninstall", {
+      name,
+    });
+    await loadSkills(state);
+    setSkillMessage(state, skillKey, {
+      kind: "success",
+      message: result?.message ?? "Uninstalled",
+    });
+  } catch (err) {
+    const message = getErrorMessage(err);
+    state.skillsError = message;
+    setSkillMessage(state, skillKey, {
+      kind: "error",
+      message,
+    });
+  } finally {
+    state.skillsBusyKey = null;
+  }
+}
+
 export async function installSkill(
   state: SkillsState,
   skillKey: string,

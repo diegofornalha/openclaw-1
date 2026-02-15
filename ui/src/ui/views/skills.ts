@@ -23,6 +23,7 @@ export type SkillsProps = {
   onEdit: (skillKey: string, value: string) => void;
   onSaveKey: (skillKey: string) => void;
   onInstall: (skillKey: string, name: string, installId: string) => void;
+  onUninstall: (skillKey: string, name: string) => void;
 };
 
 export function renderSkills(props: SkillsProps) {
@@ -145,6 +146,17 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
                 @click=${() => props.onInstall(skill.skillKey, skill.name, skill.install[0].id)}
               >
                 ${busy ? "Installing…" : skill.install[0].label}
+              </button>`
+              : nothing
+          }
+          ${
+            skill.source === "openclaw-bundled" && !skill.disabled
+              ? html`<button
+                class="btn danger"
+                ?disabled=${busy}
+                @click=${() => props.onUninstall(skill.skillKey, skill.name)}
+              >
+                ${busy ? "Uninstalling…" : "Uninstall"}
               </button>`
               : nothing
           }

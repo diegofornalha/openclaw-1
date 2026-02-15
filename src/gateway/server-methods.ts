@@ -153,6 +153,7 @@ function authorizeGatewayMethod(method: string, client: GatewayRequestOptions["c
     method === "agents.update" ||
     method === "agents.delete" ||
     method === "skills.install" ||
+    method === "skills.uninstall" ||
     method === "skills.update" ||
     method === "cron.add" ||
     method === "cron.update" ||

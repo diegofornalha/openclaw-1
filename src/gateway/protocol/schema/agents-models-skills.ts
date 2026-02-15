@@ -198,6 +198,13 @@ export const SkillsInstallParamsSchema = Type.Object(
   { additionalProperties: false },
 );
 
+export const SkillsUninstallParamsSchema = Type.Object(
+  {
+    name: NonEmptyString,
+  },
+  { additionalProperties: false },
+);
+
 export const SkillsUpdateParamsSchema = Type.Object(
   {
     skillKey: NonEmptyString,

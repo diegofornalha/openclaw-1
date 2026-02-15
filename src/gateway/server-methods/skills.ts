@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { OpenClawConfig } from "../../config/config.js";
 import type { GatewayRequestHandlers } from "./types.js";
 import {
@@ -8,8 +10,10 @@ import {
 import { installSkill } from "../../agents/skills-install.js";
 import { buildWorkspaceSkillStatus } from "../../agents/skills-status.js";
 import { loadWorkspaceSkillEntries, type SkillEntry } from "../../agents/skills.js";
+import { resolveBundledSkillsDir } from "../../agents/skills/bundled-dir.js";
 import { listAgentWorkspaceDirs } from "../../agents/workspace-dirs.js";
 import { loadConfig, writeConfigFile } from "../../config/config.js";
+import { resolveOpenClawPackageRootSync } from "../../infra/openclaw-root.js";
 import { getRemoteSkillEligibility } from "../../infra/skills-remote.js";
 import { normalizeAgentId } from "../../routing/session-key.js";
 import { normalizeSecretInput } from "../../utils/normalize-secret-input.js";
@@ -20,6 +24,7 @@ import {
   validateSkillsBinsParams,
   validateSkillsInstallParams,
   validateSkillsStatusParams,
+  validateSkillsUninstallParams,
   validateSkillsUpdateParams,
 } from "../protocol/index.js";
 
@@ -142,6 +147,68 @@ export const skillsHandlers: GatewayRequestHandlers = {
       result,
       result.ok ? undefined : errorShape(ErrorCodes.UNAVAILABLE, result.message),
     );
+  },
+  "skills.uninstall": async ({ params, respond }) => {
+    if (!validateSkillsUninstallParams(params)) {
+      respond(
+        false,
+        undefined,
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          `invalid skills.uninstall params: ${formatValidationErrors(validateSkillsUninstallParams.errors)}`,
+        ),
+      );
+      return;
+    }
+    const p = params as { name: string };
+    const bundledDir = resolveBundledSkillsDir();
+    if (!bundledDir) {
+      respond(
+        false,
+        undefined,
+        errorShape(ErrorCodes.UNAVAILABLE, "bundled skills directory not found"),
+      );
+      return;
+    }
+    const skillDir = path.join(bundledDir, p.name);
+    if (!fs.existsSync(skillDir)) {
+      respond(
+        false,
+        undefined,
+        errorShape(ErrorCodes.INVALID_REQUEST, `skill "${p.name}" not found in bundled skills`),
+      );
+      return;
+    }
+    await fs.promises.rm(skillDir, { recursive: true, force: true });
+
+    // Append to .gitignore so the skill doesn't return on git pull/update
+    const repoRoot = resolveOpenClawPackageRootSync({});
+    if (repoRoot) {
+      const gitignorePath = path.join(repoRoot, ".gitignore");
+      const entry = `skills/${p.name}/`;
+      try {
+        let content = "";
+        try {
+          content = await fs.promises.readFile(gitignorePath, "utf-8");
+        } catch {
+          // .gitignore doesn't exist yet
+        }
+        if (!content.includes(entry)) {
+          const sectionHeader = "# Removed built-in skills (prevent return on git pull/update)";
+          if (content.includes(sectionHeader)) {
+            const appendContent = content.endsWith("\n") ? `${entry}\n` : `\n${entry}\n`;
+            await fs.promises.appendFile(gitignorePath, appendContent);
+          } else {
+            const prefix = content.endsWith("\n") ? "\n" : "\n\n";
+            await fs.promises.appendFile(gitignorePath, `${prefix}${sectionHeader}\n${entry}\n`);
+          }
+        }
+      } catch {
+        // Non-fatal: skill was already removed, gitignore update is best-effort
+      }
+    }
+
+    respond(true, { ok: true, name: p.name, message: "Skill uninstalled" }, undefined);
   },
   "skills.update": async ({ params, respond }) => {
     if (!validateSkillsUpdateParams(params)) {

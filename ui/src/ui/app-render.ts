@@ -47,6 +47,7 @@ import {
   installSkill,
   loadSkills,
   saveSkillApiKey,
+  uninstallSkill,
   updateSkillEdit,
   updateSkillEnabled,
 } from "./controllers/skills.ts";
@@ -697,6 +698,7 @@ export function renderApp(state: AppViewState) {
                 onSaveKey: (key) => saveSkillApiKey(state, key),
                 onInstall: (skillKey, name, installId) =>
                   installSkill(state, skillKey, name, installId),
+                onUninstall: (skillKey, name) => uninstallSkill(state, skillKey, name),
               })
             : nothing
         }
